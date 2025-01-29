@@ -1,10 +1,13 @@
 import express, { Request, Response } from "express"
 import puppeteer from "puppeteer"
+const cors = require("cors")
 require("dotenv").config()
 
 const app = express()
 
-// Página inicial
+// Habilita o CORS para todas as origens
+app.use(cors())
+
 app.get("/", (req: Request, res: Response) => {
     const htmlContent = `
         <!DOCTYPE html>
@@ -76,38 +79,38 @@ app.post("/api/generate-pdf", async (req: Request, res: Response) => {
     try {
         // Lê o corpo da requisição
         const { html, filename } = req.body
-    
+
         if (!html) {
-          return new Response("O conteúdo HTML é obrigatório.", { status: 400 })
+            return new Response("O conteúdo HTML é obrigatório.", { status: 400 })
         }
-    
+
         const browser = await puppeteer.launch()
         const page = await browser.newPage()
-    
+
         // Define o conteúdo HTML recebido na requisição
         await page.setContent(html)
-    
+
         // Gera o PDF, com quebras de página
         const pdfBuffer = await page.pdf({
-          format: "A4",
-          printBackground: true,
+            format: "A4",
+            printBackground: true,
         })
         await browser.close()
-    
+
         // Define o nome do arquivo PDF
         const safeFilename = filename || "documento.pdf"
-    
+
         // Retorna o PDF como resposta
         return new Response(pdfBuffer, {
-          headers: {
-            "Content-Type": "application/pdf",
-            "Content-Disposition": `attachment filename="${safeFilename}"`,
-          },
+            headers: {
+                "Content-Type": "application/pdf",
+                "Content-Disposition": `attachment filename="${safeFilename}"`,
+            },
         })
-      } catch (error) {
+    } catch (error) {
         console.error("Erro ao gerar o PDF:", error)
         return new Response("Erro interno ao gerar o PDF.", { status: 500 })
-      }
+    }
 })
 
 app.listen(process.env.PORT || 3000, () => {
