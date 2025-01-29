@@ -1,10 +1,8 @@
 import express, { Request, Response } from "express"
-import multer from "multer"
-import { imageConverter } from "./image-converter/index"
+import puppeteer from "puppeteer"
 require("dotenv").config()
 
 const app = express()
-const upload = multer({ dest: "uploads/" })
 
 // Página inicial
 app.get("/", (req: Request, res: Response) => {
@@ -74,129 +72,42 @@ app.get("/", (req: Request, res: Response) => {
     res.send(htmlContent)
 })
 
-// Endpoint para conversão de imagens (API funcional)
-app.post("/api/converter-imagem", upload.single("image"), async (req: Request, res: Response) => {
+app.post("/api/generate-pdf", async (req: Request, res: Response) => {
     try {
-        if (!req.file) {
-            return res.status(400).send({ error: "Nenhuma imagem enviada." })
+        // Lê o corpo da requisição
+        const { html, filename } = req.body
+    
+        if (!html) {
+          return new Response("O conteúdo HTML é obrigatório.", { status: 400 })
         }
-
-        // Chama a função de conversão
-        await imageConverter(req, res)
-    } catch (error: any) {
-        res.status(500).send({ error: `Erro ao processar a imagem: ${error.message}` })
-    }
-})
-
-app.get("/converter-imagem", async (req: Request, res: Response) => {
-    const htmlContent = `
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Consumir API - Converter Imagem</title>
-        <style>
-            body {
-                font-family: Arial, sans-serif;
-                margin: 0;
-                padding: 0;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                height: 100vh;
-                background-color: #f4f4f9;
-            }
-
-            .container {
-                text-align: center;
-                padding: 20px;
-                background: white;
-                border-radius: 8px;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            }
-
-            input[type="file"] {
-                margin: 10px 0;
-            }
-
-            button {
-                background-color: #4caf50;
-                color: white;
-                padding: 10px 20px;
-                border: none;
-                border-radius: 5px;
-                font-size: 16px;
-                cursor: pointer;
-            }
-
-            button:hover {
-                background-color: #45a049;
-            }
-
-            .response {
-                margin-top: 20px;
-                padding: 10px;
-                border-radius: 5px;
-                background-color: #f0f8ff;
-                color: #333;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>Conversor de Imagem</h1>
-            <form id="upload-form">
-                <input type="file" id="file-input" name="image" accept="image/*" required>
-                <button type="submit">Converter e Baixar</button>
-            </form>
-            <div id="response" class="response" style="display: none;"></div>
-        </div>
-
-        <script>
-            document.getElementById("upload-form").addEventListener("submit", async (event) => {
-                event.preventDefault(); // Evita o recarregamento da página
-                const fileInput = document.getElementById("file-input");
-                const responseDiv = document.getElementById("response");
-
-                if (!fileInput.files.length) {
-                    alert("Selecione uma imagem antes de enviar.");
-                    return;
-                }
-
-                const formData = new FormData();
-                formData.append("image", fileInput.files[0]);
-
-                try {
-                    // Faz a requisição para a API com o arquivo enviado
-                    const response = await fetch("http://localhost:3000/api/converter-imagem", {
-                        method: "POST",
-                        body: formData,
-                    });
-
-                    if (!response.ok) {
-                        throw new Error("Erro ao converter a imagem.");
-                    }
-
-                    // Baixar o arquivo convertido
-                    const blob = await response.blob();
-                    const downloadLink = document.createElement("a");
-                    downloadLink.href = URL.createObjectURL(blob);
-                    downloadLink.download = "imagem-convertida.png"; // Nome sugerido para o arquivo baixado
-                    downloadLink.click();
-
-                    responseDiv.style.display = "block";
-                    responseDiv.textContent = "Imagem convertida e baixada com sucesso!";
-                } catch (error) {
-                    responseDiv.style.display = "block";
-                    responseDiv.textContent = "Erro ao consumir a API: " + error.message;
-                }
-            });
-        </script>
-    </body>
-    </html>
-    `
-    res.send(htmlContent)
+    
+        const browser = await puppeteer.launch()
+        const page = await browser.newPage()
+    
+        // Define o conteúdo HTML recebido na requisição
+        await page.setContent(html)
+    
+        // Gera o PDF, com quebras de página
+        const pdfBuffer = await page.pdf({
+          format: "A4",
+          printBackground: true,
+        })
+        await browser.close()
+    
+        // Define o nome do arquivo PDF
+        const safeFilename = filename || "documento.pdf"
+    
+        // Retorna o PDF como resposta
+        return new Response(pdfBuffer, {
+          headers: {
+            "Content-Type": "application/pdf",
+            "Content-Disposition": `attachment filename="${safeFilename}"`,
+          },
+        })
+      } catch (error) {
+        console.error("Erro ao gerar o PDF:", error)
+        return new Response("Erro interno ao gerar o PDF.", { status: 500 })
+      }
 })
 
 app.listen(process.env.PORT || 3000, () => {
