@@ -1,5 +1,7 @@
 import express, { Request, Response } from "express"
-import puppeteer from "puppeteer"
+import puppeteer from "puppeteer-core"
+import chromium from "chrome-aws-lambda"
+
 const cors = require("cors")
 require("dotenv").config()
 
@@ -89,11 +91,10 @@ app.post("/api/generate-pdf", async (req: Request, res: Response) => {
         }
 
         const browser = await puppeteer.launch({
-            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
-            args: [
-                "--no-sandbox",
-                "--disable-gpu",
-            ],
+            args: chromium.args, // Passa os argumentos corretos para o ambiente sem UI
+            executablePath: await chromium.executablePath, // Caminho do Chrome
+            headless: true, // Garantir que o modo headless seja ativado
+            defaultViewport: chromium.defaultViewport, // Tamanho da viewport adequado
         })
 
         const page = await browser.newPage()
