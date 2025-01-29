@@ -1,4 +1,4 @@
-import express, { Request, Response } from "express"
+import express from "express"
 import puppeteer from "puppeteer-core"
 import chromium from "chrome-aws-lambda"
 
@@ -14,7 +14,7 @@ app.use(cors())
 app.use(express.json())
 
 // Página inicial
-app.get("/", (req: Request, res: Response) => {
+app.get("/", (req, res) => {
     const htmlContent = `
         <!DOCTYPE html>
         <html lang="pt-BR">
@@ -81,7 +81,7 @@ app.get("/", (req: Request, res: Response) => {
     res.send(htmlContent)
 })
 
-app.post("/api/generate-pdf", async (req: Request, res: Response) => {
+app.post("/api/generate-pdf", async (req, res) => {
     try {
         // Lê o corpo da requisição
         const { html, filename } = req.body
