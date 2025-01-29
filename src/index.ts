@@ -104,7 +104,7 @@ app.post("/api/generate-pdf", async (req: Request, res: Response) => {
 
         // Gera o PDF, com quebras de página
         const pdfBuffer = await page.pdf({
-            format: "A4",
+            format: "a4",
             printBackground: true,
         })
         await browser.close()
